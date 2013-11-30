@@ -11,6 +11,6 @@ class ITask
 		virtual void execute(void *protocol, std::size_t size, int fd) = 0;
 };
 	
-}
+} // namespace UFW
 
 #endif

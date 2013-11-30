@@ -24,6 +24,6 @@ class ConcurrencyModel : public UFW::IConcurrencyModel // cria threads, cria epo
 		UFW::ITask 					*task_;
 };
 
-}
+} // namespace UFW
 
 #endif

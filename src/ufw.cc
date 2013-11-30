@@ -7,19 +7,22 @@ UFW::UFW()
 }
 
 
-void UFW::SetConcurrencyModel(IConcurrencyModel *concurrency_model)
+void
+UFW::SetConcurrencyModel(IConcurrencyModel *concurrency_model)
 {
 	concurrency_model_ = concurrency_model;
 }
 
 
-void UFW::SetListenPort(int port)
+void
+UFW::SetListenPort(int port)
 {
 
 }
 
 
-void UFW::WaitRequests()
+void
+UFW::WaitRequests()
 {
 	// Instancia o modelo de concorrencia
 	concurrency_model_->start();

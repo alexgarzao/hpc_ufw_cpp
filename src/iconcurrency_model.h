@@ -6,10 +6,10 @@ namespace UFW {
 class IConcurrencyModel
 {
 	public:
-		virtual int start() = 0;
+		virtual int start() 		= 0;
 		virtual int wait_requests() = 0;
 };
 
-}
+} // namespace UFW
 
 #endif

@@ -17,7 +17,7 @@ Captura sinais de erro
 MILESTONES:
 	* (OK) estrutura minima onde utiliza libev, faz bind, accept, recebe msg e envia resposta
 	* (OK) client que envia msg (protocolo texto) e recebe resposta
-	* Client envia tarefa (protocolo binario)
-	* Server decodifica protocolo, executa, responde
+	* (OK) Client envia tarefa (protocolo binario)
+	* (OK) Server decodifica protocolo, executa, responde
 	* Multithread
 	* Capturar sinais de erro

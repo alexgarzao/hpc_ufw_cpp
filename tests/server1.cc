@@ -5,9 +5,10 @@
 const unsigned int 	PORT			= 9999;
 const unsigned int 	TOTAL_THREADS	= 1;
 
-int main()
+int
+main()
 {
-	UFW::UFW ufw;
+	UFW::UFW 	ufw;
 	// Os set's indicam os .so para serem carregados. Cada .so e' um plugin que implementa uma interface...
 //	ufw.SetSocketInterface("StandardSocketInterface");
 	// ufw.SetServerModel("StandardServerModel");
