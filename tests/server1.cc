@@ -1,5 +1,6 @@
 #include "ufw.h"
 #include "multiply_numbers.h"
+#include "protocol1.h"
 
 const unsigned int 	PORT			= 9999;
 const unsigned int 	TOTAL_THREADS	= 1;

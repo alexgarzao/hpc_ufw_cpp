@@ -13,8 +13,8 @@ namespace UFW {
 
 const unsigned int 	BUFFER_SIZE = 1024U;
 
-void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
-void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
+
+ConcurrencyModel* ConcurrencyModel::instance_ = NULL;
 
 
 ConcurrencyModel::ConcurrencyModel(const unsigned int &port, const unsigned int &worker_threads, UFW::ITask *task) :
@@ -22,6 +22,7 @@ ConcurrencyModel::ConcurrencyModel(const unsigned int &port, const unsigned int 
 	worker_threads_(worker_threads),
 	task_(task)
 {
+	instance_ = this;
 }
 
 
@@ -60,7 +61,7 @@ int ConcurrencyModel::start()
 	}
 
 	// Initialize and start a watcher to accepts client requests
-	ev_io_init(&w_accept, accept_cb, sd, EV_READ);
+	ev_io_init(&w_accept, ConcurrencyModel::accept_cb, sd, EV_READ);
 	ev_io_start(loop, &w_accept);
 
 	// Start infinite loop
@@ -98,7 +99,7 @@ int ConcurrencyModel::wait_requests()
 
 
 // Accept client requests
-void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
+void ConcurrencyModel::accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
 	struct sockaddr_in client_addr;
 	socklen_t client_len = sizeof(client_addr);
@@ -125,13 +126,13 @@ void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 	// printf("%d client(s) connected.\n", total_clients);
 
 	// Initialize and start watcher to read client requests
-	ev_io_init(w_client, read_cb, client_sd, EV_READ);
+	ev_io_init(w_client, ConcurrencyModel::read_cb, client_sd, EV_READ);
 	ev_io_start(loop, w_client);
 }
 
 
 // Read client message
-void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
+void ConcurrencyModel::read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
 	char buffer[BUFFER_SIZE];
 	ssize_t read;
@@ -164,11 +165,17 @@ void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 	else
 	{
 	  printf("message:%s\n",buffer);
+	  ConcurrencyModel *concurrency_model = static_cast<ConcurrencyModel*>(instance_);
+	  concurrency_model->run_task(buffer, read, watcher->fd);
 	}
 
-	// Send message bach to the client
-	send(watcher->fd, buffer, read, 0);
 	bzero(buffer, read);
+}
+
+
+void ConcurrencyModel::run_task(void *buffer, ssize_t read, int fd)
+{
+	task_->execute(buffer, read, fd);
 }
 
 

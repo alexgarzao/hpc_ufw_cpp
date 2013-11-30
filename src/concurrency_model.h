@@ -14,10 +14,14 @@ class ConcurrencyModel : public UFW::IConcurrencyModel // cria threads, cria epo
 		ConcurrencyModel(const unsigned int &port, const unsigned int &worker_threads, UFW::ITask *task);
 		int start();
 		int wait_requests();
+		static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
+		static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
+		void run_task(void *buffer, ssize_t read, int fd);
 	private:
-		unsigned int 	port_;
-		unsigned int	worker_threads_;
-		UFW::ITask 		*task_;
+		static ConcurrencyModel 	*instance_;
+		unsigned int 				port_;
+		unsigned int				worker_threads_;
+		UFW::ITask 					*task_;
 };
 
 }
