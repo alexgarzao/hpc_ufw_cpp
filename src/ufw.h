@@ -17,6 +17,6 @@ class UFW
 		::UFW::IConcurrencyModel 	*concurrency_model_;
 };
 	
-}
+} // namespace UFW
 
 #endif

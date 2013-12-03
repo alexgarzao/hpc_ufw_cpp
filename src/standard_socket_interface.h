@@ -15,7 +15,7 @@ class StandardSocketInterface : public UFW::SocketInterface
 	int close(UFW::Socket &socket) ...
 };
 
-}
+} // namespace UFW
 
 
 
