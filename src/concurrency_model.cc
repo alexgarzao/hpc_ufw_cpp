@@ -1,24 +1,28 @@
-#include <ev.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <strings.h>
 #include <stdlib.h>
+#include <ev.h>
+
+#include <iostream>
+#include <boost/thread.hpp>
 
 #include "concurrency_model.h"
 
 
 namespace UFW {
 
-const unsigned int 	BUFFER_SIZE 				= 1024U;
 ConcurrencyModel* 	ConcurrencyModel::instance_ = NULL;
 
 
 ConcurrencyModel::ConcurrencyModel(const unsigned int &port, const unsigned int &worker_threads, UFW::ITask *task) :
 	port_(port),
 	worker_threads_(worker_threads),
-	task_(task)
+	task_(task),
+	last_thread_(0)
 {
 	instance_ = this;
 }
@@ -33,13 +37,16 @@ ConcurrencyModel::start()
 	int 				addr_len;
 	struct ev_io 		w_accept;
 
-	loop 		= ev_default_loop(0);
+	loop 		= ev_default_loop(EVFLAG_AUTO);
 	addr_len 	= sizeof(addr);
+
+	// Start threads
+	start_threads_();
 
 	// Create server socket
 	if( (sd = socket(PF_INET, SOCK_STREAM, 0)) < 0 ) {
-	  perror("socket error");
-	  return -1;
+		perror("socket error");
+		return -1;
 	}
 
 	bzero(&addr, sizeof(addr));
@@ -49,33 +56,25 @@ ConcurrencyModel::start()
 
 	// Bind socket to address
 	if (bind(sd, (struct sockaddr*) &addr, sizeof(addr)) != 0) {
-	  perror("bind error");
-
+		perror("bind error");
 	}
+
+    fcntl(sd, F_SETFL, fcntl(sd, F_GETFL, 0) | O_NONBLOCK); 
 
 	// Start listing on server socket
 	if (listen(sd, 2) < 0) { // TODO: qual valor backlog???
-	  perror("listen error");
-	  return -1;
+		perror("listen error");
+		return -1;
 	}
 
 	// Initialize and start a watcher to accepts client requests
-	ev_io_init(&w_accept, ConcurrencyModel::accept_cb, sd, EV_READ);
+	ev_io_init(&w_accept, ConcurrencyModel::accept_cb_wrapper_, sd, EV_READ);
 	ev_io_start(loop, &w_accept);
 
 	// Start infinite loop
 	while(1) {
-	  ev_loop(loop, 0);
+		ev_loop(loop, 0);
 	}
-
-	// listen/accept
-	// repassa socket para uma worker thread (pelo epoll da thread)
-		// acha thread para enviar
-		// agenda timeout da operacao
-		// envia para thread
-
-	// Cria threads
-	// cria epolls
 }
 
 
@@ -88,15 +87,25 @@ ConcurrencyModel::wait_requests()
 
 // Accept client requests
 void
-ConcurrencyModel::accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
+ConcurrencyModel::accept_cb_wrapper_(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
+	std::cout << "Iniciando " << __FUNCTION__ << std::endl;
+
+	ConcurrencyModel *concurrency_model = static_cast<ConcurrencyModel*>(instance_);
+	concurrency_model->accept_cb_(loop, watcher, revents);
+}
+
+
+void
+ConcurrencyModel::accept_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents)
+{
+	std::cout << "Iniciando " << __FUNCTION__ << std::endl;
+
 	struct sockaddr_in 	client_addr;
 	socklen_t 			client_len;
 	int 				client_sd;
-	struct ev_io 		*w_client;
 
 	client_len 	= sizeof(client_addr);
-	w_client 	= (struct ev_io*) malloc (sizeof(struct ev_io));
 
 	if(EV_ERROR & revents) {
 	  perror("got invalid event");
@@ -116,117 +125,25 @@ ConcurrencyModel::accept_cb(struct ev_loop *loop, struct ev_io *watcher, int rev
 	// printf("%d client(s) connected.\n", total_clients);
 
 	// Initialize and start watcher to read client requests
-	ev_io_init(w_client, ConcurrencyModel::read_cb, client_sd, EV_READ);
-	ev_io_start(loop, w_client);
+	worker_thread_list_[last_thread_]->add_watcher(client_sd);
+	last_thread_ = (last_thread_ + 1) % worker_thread_list_.size();
 }
 
 
-// Read client message
-void
-ConcurrencyModel::read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
+int
+ConcurrencyModel::start_threads_()
 {
-	char 	buffer[BUFFER_SIZE];
-	ssize_t read;
+	std::cout << "Iniciando " << __FUNCTION__ << std::endl;
 
-	if(EV_ERROR & revents) {
-	  perror("got invalid event");
-	  return;
+	std::cout << "Worker threads: " << worker_threads_ << std::endl;
+	for(unsigned int thread_number = 0; thread_number < worker_threads_; thread_number++) {
+		WorkerThread 	*worker_thread = new WorkerThread(task_);
+		worker_thread->start();
+		worker_thread_list_.push_back(worker_thread);
 	}
 
-	// Receive message from client socket
-	read = recv(watcher->fd, buffer, BUFFER_SIZE, 0);
-
-	if(read < 0) {
-	  perror("read error");
-	  return;
-	}
-
-	if(read == 0) {
-	  // Stop and free watchet if client socket is closing
-	  ev_io_stop(loop,watcher);
-	  free(watcher);
-	  perror("peer might closing");
-	  // total_clients --; // Decrement total_clients count
-	  // printf("%d client(s) connected.\n", total_clients);
-	  return;
-	} else {
-	  printf("message:%s\n",buffer);
-	  ConcurrencyModel *concurrency_model = static_cast<ConcurrencyModel*>(instance_);
-	  concurrency_model->run_task(buffer, read, watcher->fd);
-	}
+	return 0;
 }
 
-
-void
-ConcurrencyModel::run_task(void *buffer, ssize_t read, int fd)
-{
-	task_->execute(buffer, read, fd);
-}
 
 } // namespace UFW
-
-
-/*
-class EchoServer {
-private:
-        ev::io           io;
-        ev::sig         sio;
-        int                 s;
- 
-public:
- 
-        void io_accept(ev::io &watcher, int revents) {
-                if (EV_ERROR & revents) {
-                        perror("got invalid event");
-                        return;
-                }
- 
-                struct sockaddr_in client_addr;
-                socklen_t client_len = sizeof(client_addr);
- 
-                int client_sd = accept(watcher.fd, (struct sockaddr *)&client_addr, &client_len);
- 
-                if (client_sd < 0) {
-                        perror("accept error");
-                        return;
-                }
- 
-                EchoInstance *client = new EchoInstance(client_sd);
-        }
- 
-        static void signal_cb(ev::sig &signal, int revents) {
-                signal.loop.break_loop();
-        }
- 
-        EchoServer(int port) {
-                printf("Listening on port %d\n", port);
- 
-                struct sockaddr_in addr;
- 
-                s = socket(PF_INET, SOCK_STREAM, 0);
- 
-                addr.sin_family = AF_INET;
-                addr.sin_port     = htons(port);
-                addr.sin_addr.s_addr = INADDR_ANY;
- 
-                if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
-                        perror("bind");
-                }
- 
-                fcntl(s, F_SETFL, fcntl(s, F_GETFL, 0) | O_NONBLOCK); 
- 
-                listen(s, 5);
- 
-                io.set<EchoServer, &EchoServer::io_accept>(this);
-                io.start(s, ev::READ);
- 
-                sio.set<&EchoServer::signal_cb>();
-                sio.start(SIGINT);
-        }
- 
-        virtual ~EchoServer() {
-                shutdown(s, SHUT_RDWR);
-                close(s);
-        }
-};
-*/

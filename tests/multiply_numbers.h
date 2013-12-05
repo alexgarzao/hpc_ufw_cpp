@@ -6,7 +6,7 @@
 class MultiplyNumbers : public UFW::ITask
 {
 	public:
-		void execute(void *protocol, std::size_t size, int fd);
+		void operator()(void *protocol, std::size_t size, int fd);
 };
 
 #endif
