@@ -18,7 +18,6 @@ class WorkerThread
 		void join();
 	private:
 		boost::thread 			*thread_;
-		static WorkerThread 	*instance_;
 		UFW::ITask 				*task_;
 		struct ev_loop 			*loop_;
 

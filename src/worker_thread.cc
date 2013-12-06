@@ -14,7 +14,6 @@
 namespace UFW {
 
 const unsigned int 	BUFFER_SIZE				= 1024U;
-WorkerThread* 		WorkerThread::instance_ = NULL;
 
 
 WorkerThread::WorkerThread(UFW::ITask *task) :
@@ -22,7 +21,6 @@ WorkerThread::WorkerThread(UFW::ITask *task) :
 {
 	std::cout << "Iniciando " << __FUNCTION__ << std::endl;
 
-	instance_ 	= this;
 	loop_ 		= ev_loop_new(EVFLAG_AUTO);
 	assert(loop_ != NULL);
 }
@@ -78,6 +76,7 @@ WorkerThread::add_watcher(int fd)
 	assert(watcher != NULL);
 
 	ev_io_init(watcher, WorkerThread::read_cb_wrapper_, fd, EV_READ);
+	watcher->data = this;
 	ev_io_start(loop_, watcher);
 }
 
@@ -86,7 +85,7 @@ WorkerThread::add_watcher(int fd)
 void
 WorkerThread::read_cb_wrapper_(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
-	WorkerThread *worker_thread = static_cast<WorkerThread*>(instance_);
+	WorkerThread *worker_thread = static_cast<WorkerThread*>(watcher->data);
 	worker_thread->read_cb_(loop, watcher, revents);
 }
 
