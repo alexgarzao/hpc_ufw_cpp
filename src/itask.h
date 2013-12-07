@@ -9,6 +9,7 @@ class ITask
 {
 	public:
 		virtual void operator()(void *protocol, std::size_t size, int fd) = 0;
+		virtual unsigned int packet_size() = 0;
 };
 	
 } // namespace UFW

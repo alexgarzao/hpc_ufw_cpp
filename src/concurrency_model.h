@@ -18,7 +18,6 @@ class ConcurrencyModel : public UFW::IConcurrencyModel // cria threads, cria epo
 		int start();
 		int wait_requests();
 	private:
-		static ConcurrencyModel 	*instance_;
 		unsigned int 				port_;
 		unsigned int				worker_threads_;
 		UFW::ITask 					*task_;

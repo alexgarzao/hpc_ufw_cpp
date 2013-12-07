@@ -18,3 +18,10 @@ MultiplyNumbers::operator()(void *protocol, std::size_t size, int fd)
 	// Send message back to the client
 	send(fd, &message_reply, sizeof(message_reply_t), 0);
 }
+
+
+unsigned int
+MultiplyNumbers::packet_size()
+{
+	return sizeof(message_request_t);
+}

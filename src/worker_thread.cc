@@ -43,7 +43,8 @@ WorkerThread::operator()()
 
 	// Start infinite loop
 	while(1) {
-		ev_loop(loop_, 0);
+		ev_run(loop_, 0);
+		// ev_loop(loop_, 0);
 	}
 }
 
@@ -78,6 +79,8 @@ WorkerThread::add_watcher(int fd)
 	ev_io_init(watcher, WorkerThread::read_cb_wrapper_, fd, EV_READ);
 	watcher->data = this;
 	ev_io_start(loop_, watcher);
+
+	read_cb_(loop_, watcher, 0);
 }
 
 
@@ -96,18 +99,24 @@ WorkerThread::read_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
 	std::cout << "Iniciando " << __FUNCTION__ << std::endl;
 
-	char 	buffer[BUFFER_SIZE];
+	char 	buffer[task_->packet_size()];
 	ssize_t read;
 
 	if(EV_ERROR & revents) {
+		ev_io_stop(loop,watcher);
+		close(watcher->fd);
+		free(watcher);
 		perror("got invalid event");
 		return;
 	}
 
 	// Receive message from client socket
-	read = recv(watcher->fd, buffer, BUFFER_SIZE, 0);
+	read = recv(watcher->fd, buffer, task_->packet_size(), 0);
 
-	if(read < 0) {
+	if(read < 0 && (errno != EAGAIN && errno != EINTR)) {
+		ev_io_stop(loop,watcher);
+		close(watcher->fd);
+		free(watcher);
 		perror("read error");
 		return;
 	}
@@ -115,6 +124,7 @@ WorkerThread::read_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents)
 	if(read == 0) {
 		// Stop and free watchet if client socket is closing
 		ev_io_stop(loop,watcher);
+		close(watcher->fd);
 		free(watcher);
 		perror("peer might closing");
 		return;

@@ -15,8 +15,6 @@
 
 namespace UFW {
 
-ConcurrencyModel* 	ConcurrencyModel::instance_ = NULL;
-
 
 ConcurrencyModel::ConcurrencyModel(const unsigned int &port, const unsigned int &worker_threads, UFW::ITask *task) :
 	port_(port),
@@ -24,7 +22,6 @@ ConcurrencyModel::ConcurrencyModel(const unsigned int &port, const unsigned int 
 	task_(task),
 	last_thread_(0)
 {
-	instance_ = this;
 }
 
 
@@ -59,7 +56,7 @@ ConcurrencyModel::start()
 		perror("bind error");
 	}
 
-    fcntl(sd, F_SETFL, fcntl(sd, F_GETFL, 0) | O_NONBLOCK); 
+    // fcntl(sd, F_SETFL, fcntl(sd, F_GETFL, 0) | O_NONBLOCK); 
 
 	// Start listing on server socket
 	if (listen(sd, 2) < 0) { // TODO: qual valor backlog???
@@ -69,11 +66,13 @@ ConcurrencyModel::start()
 
 	// Initialize and start a watcher to accepts client requests
 	ev_io_init(&w_accept, ConcurrencyModel::accept_cb_wrapper_, sd, EV_READ);
+	w_accept.data = this;
 	ev_io_start(loop, &w_accept);
 
 	// Start infinite loop
 	while(1) {
-		ev_loop(loop, 0);
+		// ev_loop(loop, 0);
+		ev_run(loop, 0);
 	}
 }
 
@@ -91,7 +90,7 @@ ConcurrencyModel::accept_cb_wrapper_(struct ev_loop *loop, struct ev_io *watcher
 {
 	std::cout << "Iniciando " << __FUNCTION__ << std::endl;
 
-	ConcurrencyModel *concurrency_model = static_cast<ConcurrencyModel*>(instance_);
+	ConcurrencyModel *concurrency_model = static_cast<ConcurrencyModel*>(watcher->data);
 	concurrency_model->accept_cb_(loop, watcher, revents);
 }
 
