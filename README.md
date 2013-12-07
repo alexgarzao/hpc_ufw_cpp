@@ -5,10 +5,10 @@ Micro Framework para HPC (Versão C++)
 
 
 
-MILESTONE 1 - Versão mínima funcional
-=====================================
+SPRINT 1 - Versão mínima funcional
+==================================
 
-A ideia é, ao final deste milestone, termos uma estrutura minima onde utiliza-se libev, faz bind, accept, recebe msg e envia resposta, utilizando-se um modelo simples de concorrência onde o master faz accept e repassa para as workers threads.
+A ideia é, ao final deste sprint, termos uma estrutura minima onde utiliza-se libev, faz bind, accept, recebe msg e envia resposta, utilizando-se um modelo simples de concorrência onde o master faz accept e repassa para as workers threads.
 
 
 Tarefas identificadas:
