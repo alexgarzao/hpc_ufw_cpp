@@ -5,7 +5,7 @@ Micro Framework para HPC (Versão C++)
 
 
 
-VERSAO 0.1 - Versão mínima funcional
+VERSÃO 0.1 - Versão mínima funcional
 ====================================
 
 * TDD/FDD
@@ -22,6 +22,8 @@ VERSAO 0.1 - Versão mínima funcional
 * Monitora eventos adicionando os sockets no epoll
 * Captura sinais de erro
 
+
+
 MILESTONES:
 ===========
 
@@ -31,3 +33,14 @@ MILESTONES:
 * (OK) Server decodifica protocolo, executa, responde
 * Multithread
 * Capturar sinais de erro
+
+
+
+BACKLOG
+=======
+
+* Suporte a protocolos de tamanho variável, podendo inclusive receber pacotes incompletos e, se necessário, parser reentrante
+* Implementar outros modelos de concorrência 
+   * Accept nas threads
+   * Fork ao invés de threads
+* Cada worker processar várias requisições
