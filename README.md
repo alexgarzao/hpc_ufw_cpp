@@ -44,3 +44,4 @@ BACKLOG
    * Accept nas threads
    * Fork ao invés de threads
 * Cada worker processar várias requisições
+* Parser/tarefas poderem relatar erros
