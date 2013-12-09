@@ -110,28 +110,31 @@ WorkerThread::read_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents)
 		return;
 	}
 
-	// Receive message from client socket
-	read = recv(watcher->fd, buffer, task_->packet_size(), 0);
+	do {
+		// Receive message from client socket
+		read = recv(watcher->fd, buffer, task_->packet_size(), 0);
 
-	if(read < 0 && (errno != EAGAIN && errno != EINTR)) {
-		ev_io_stop(loop,watcher);
-		close(watcher->fd);
-		free(watcher);
-		perror("read error");
-		return;
-	}
+		if(read < 0) {
+			if (errno != EAGAIN && errno != EINTR) {
+				ev_io_stop(loop,watcher);
+				close(watcher->fd);
+				free(watcher);
+				perror("read error");
+			}
 
-	if(read == 0) {
-		// Stop and free watchet if client socket is closing
-		ev_io_stop(loop,watcher);
-		close(watcher->fd);
-		free(watcher);
-		perror("peer might closing");
-		return;
-	} else {
-		printf("message:%s\n",buffer);
-		(*task_)(buffer, read, watcher->fd);
-	}
+			return;
+		} else if(read == 0) {
+			// Stop and free watchet if client socket is closing
+			ev_io_stop(loop,watcher);
+			close(watcher->fd);
+			free(watcher);
+			perror("peer might closing");
+			return;
+		} else {
+			// printf("message:%s\n",buffer);
+			(*task_)(buffer, read, watcher->fd);
+		}
+	} while(true);
 }
 
 
