@@ -78,9 +78,10 @@ WorkerThread::add_watcher(int fd)
 
 	ev_io_init(watcher, WorkerThread::read_cb_wrapper_, fd, EV_READ);
 	watcher->data = this;
-	ev_io_start(loop_, watcher);
 
-	read_cb_(loop_, watcher, 0);
+	if (read_cb_(loop_, watcher, EV_READ) == 0) {
+		ev_io_start(loop_, watcher);
+	}
 }
 
 
@@ -94,7 +95,7 @@ WorkerThread::read_cb_wrapper_(struct ev_loop *loop, struct ev_io *watcher, int 
 
 
 // Read client message
-void
+int
 WorkerThread::read_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
 	std::cout << "Iniciando " << __FUNCTION__ << std::endl;
@@ -107,34 +108,38 @@ WorkerThread::read_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents)
 		close(watcher->fd);
 		free(watcher);
 		perror("got invalid event");
-		return;
-	}
+		return 1;
+	} else if(EV_READ & revents) {
+		do {
+			// Receive message from client socket
+			read = recv(watcher->fd, buffer, task_->packet_size(), 0);
 
-	do {
-		// Receive message from client socket
-		read = recv(watcher->fd, buffer, task_->packet_size(), 0);
+			if(read < 0) {
+				if (errno != EAGAIN && errno != EINTR) {
+					ev_io_stop(loop,watcher);
+					close(watcher->fd);
+					free(watcher);
+					perror("read error");
+					break;
+				}
 
-		if(read < 0) {
-			if (errno != EAGAIN && errno != EINTR) {
+				return 0;
+			} else if(read == 0) {
+				// Stop and free watchet if client socket is closing
 				ev_io_stop(loop,watcher);
 				close(watcher->fd);
 				free(watcher);
-				perror("read error");
+				perror("peer might closing");
+				break;
+			} else {
+				assert(read == task_->packet_size());
+				// printf("message:%s\n",buffer);
+				(*task_)(buffer, read, watcher->fd);
 			}
+		} while(true);
+	}
 
-			return;
-		} else if(read == 0) {
-			// Stop and free watchet if client socket is closing
-			ev_io_stop(loop,watcher);
-			close(watcher->fd);
-			free(watcher);
-			perror("peer might closing");
-			return;
-		} else {
-			// printf("message:%s\n",buffer);
-			(*task_)(buffer, read, watcher->fd);
-		}
-	} while(true);
+	return 1;
 }
 
 

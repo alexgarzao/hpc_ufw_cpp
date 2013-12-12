@@ -22,7 +22,7 @@ class WorkerThread
 		struct ev_loop 			*loop_;
 
 		static void read_cb_wrapper_(struct ev_loop *loop, struct ev_io *watcher, int revents);
-		void read_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents);
+		int read_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents);
 };
 
 } // namespace UFW
