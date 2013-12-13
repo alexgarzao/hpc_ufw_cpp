@@ -13,8 +13,6 @@
 
 namespace UFW {
 
-const unsigned int 	BUFFER_SIZE				= 1024U;
-
 
 WorkerThread::WorkerThread(UFW::ITask *task) :
 	task_(task)
@@ -71,10 +69,12 @@ WorkerThread::add_watcher(int fd)
 {
 	std::cout << "Iniciando " << __FUNCTION__ << std::endl;
 
-	struct ev_io 		*watcher;
+	TaskInfo 			*task_info;
 
-	watcher 	= (struct ev_io*) malloc (sizeof(struct ev_io));
-	assert(watcher != NULL);
+	task_info 	= (TaskInfo*) calloc (1, sizeof(TaskInfo));
+	assert(task_info != NULL);
+
+	struct ev_io 		*watcher = &task_info->watcher;
 
 	ev_io_init(watcher, WorkerThread::read_cb_wrapper_, fd, EV_READ);
 	watcher->data = this;
@@ -100,8 +100,8 @@ WorkerThread::read_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
 	std::cout << "Iniciando " << __FUNCTION__ << std::endl;
 
-	char 	buffer[task_->packet_size()];
-	ssize_t read;
+	UFW::TaskInfo 	*task_info = (UFW::TaskInfo*)watcher;
+	ssize_t 		read;
 
 	if(EV_ERROR & revents) {
 		ev_io_stop(loop,watcher);
@@ -112,7 +112,7 @@ WorkerThread::read_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents)
 	} else if(EV_READ & revents) {
 		do {
 			// Receive message from client socket
-			read = recv(watcher->fd, buffer, task_->packet_size(), 0);
+			read = recv(watcher->fd, task_info->buffer + task_info->data_len, BUFFER_SIZE - task_info->data_len, 0);
 
 			if(read < 0) {
 				if (errno != EAGAIN && errno != EINTR) {
@@ -132,9 +132,19 @@ WorkerThread::read_cb_(struct ev_loop *loop, struct ev_io *watcher, int revents)
 				perror("peer might closing");
 				break;
 			} else {
-				assert(read == task_->packet_size());
-				// printf("message:%s\n",buffer);
-				(*task_)(buffer, read, watcher->fd);
+				task_info->data_len += read;
+
+				while (true) {
+					size_t 	parsed_bytes = (*task_)(task_info, watcher->fd);
+					if (parsed_bytes == 0) {
+						break;
+					}
+
+					task_info->data_len -= parsed_bytes;
+					if (task_info->data_len > 0) {
+						memcpy(task_info->buffer, task_info->buffer + parsed_bytes, task_info->data_len);
+					}
+				}
 			}
 		} while(true);
 	}

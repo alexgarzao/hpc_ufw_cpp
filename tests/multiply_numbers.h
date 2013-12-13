@@ -6,7 +6,7 @@
 class MultiplyNumbers : public UFW::ITask
 {
 	public:
-		void operator()(void *protocol, std::size_t size, int fd);
+		size_t operator()(UFW::TaskInfo *, int);
 		unsigned int packet_size();
 };
 

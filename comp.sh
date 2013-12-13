@@ -4,3 +4,5 @@ echo "Building client_request_1" && \
 g++ -W -Wall -Wextra -Isrc/ -ggdb -Itests/ tests/client_request1.cc -o bin/cr1
 echo "Building client_multiple_requests1" && \
 g++ -W -Wall -Wextra -Isrc/ -ggdb -Itests/ tests/client_multiple_requests1.cc -o bin/cmr1
+echo "Building client_partial_multiple_requests1" && \
+g++ -W -Wall -Wextra -Isrc/ -ggdb -Itests/ tests/client_partial_multiple_requests1.cc -o bin/cpmr1
